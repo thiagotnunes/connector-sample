@@ -11,41 +11,36 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <beam.version>2.30.0</beam.version>
+    <beam.version>2.31.0</beam.version>
+    <connector.version>2.33.0-SNAPSHOT</connector.version>
     <joda.version>2.10.5</joda.version>
     <slf4j.version>1.7.25</slf4j.version>
-    <hadoop.common.version>3.3.0</hadoop.common.version>
-    <hadoop.core.version>1.2.1</hadoop.core.version>
-    <pubsub.version>1.108.7</pubsub.version>
 
-    <junit.version>4.12</junit.version>
-    <hamcrest.version>2.1</hamcrest.version>
-    <mockito.version>3.0.0</mockito.version>
-
+    <commons.version>1.15</commons.version>
   </properties>
 
   <profiles>
     <profile>
       <id>dataflow</id>
       <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-          <version>${beam.version}</version>
-          <scope>runtime</scope>
-        </dependency>
       </dependencies>
     </profile>
   </profiles>
 
   <dependencies>
-
     <dependency>
       <groupId>org.apache.beam</groupId>
-      <artifactId>beam-runners-direct-java</artifactId>
+      <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
       <version>${beam.version}</version>
-      <scope>runtime</scope>
+<!--      <scope>runtime</scope>-->
     </dependency>
+
+<!--    <dependency>-->
+<!--      <groupId>org.apache.beam</groupId>-->
+<!--      <artifactId>beam-runners-direct-java</artifactId>-->
+<!--      <version>${beam.version}</version>-->
+<!--      <scope>runtime</scope>-->
+<!--    </dependency>-->
 
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -56,7 +51,7 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-      <version>${beam.version}</version>
+      <version>${connector.version}</version>
     </dependency>
 
     <dependency>
@@ -72,53 +67,24 @@
     </dependency>
 
     <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${commons.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
       <version>${slf4j.version}</version>
       <scope>runtime</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.common.version}</version>
-      <scope>test</scope>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>com.google.cloud</groupId>-->
+<!--      <artifactId>google-cloud-monitoring</artifactId>-->
+<!--      <version>2.3.0</version>-->
+<!--    </dependency>-->
 
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
-      <version>${hadoop.core.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-core</artifactId>
-      <version>${hamcrest.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-library</artifactId>
-      <version>${hamcrest.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <version>${mockito.version}</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 </project>
 
