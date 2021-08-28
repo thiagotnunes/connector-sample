@@ -29,25 +29,37 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.values.TypeDescriptors;
 
 public class PipelineMain {
 
   public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
   public static final String PROJECT_ID = "cloud-spanner-backups-loadtest";
+
+  // https://pantheon-staging-sso.corp.google.com/dataflow/jobs/us-central1/2021-08-26_18_27_29-17624328362901535969;step=?project=cloud-spanner-backups-loadtest&e=BackendzOverridingLaunch::BackendzOverridingEnabled&mods=-monitoring_api_staging
+  // public static final String INSTANCE_ID = "change-stream-load-test-1";
+  // public static final String DATABASE_ID = "synthetic-load-test-db";
+  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
+
+  // public static final String INSTANCE_ID = "change-stream-load-test-2";
+  // public static final String DATABASE_ID = "testdbload-test-change-stream";
+  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
+
   public static final String INSTANCE_ID = "change-stream-load-test-3";
   public static final String DATABASE_ID = "load-test-change-stream-enable";
   public static final String CHANGE_STREAM_NAME = "changeStreamAll";
+
+  // public static final String INSTANCE_ID = "cdc-hengfeng-test";
+  // public static final String DATABASE_ID = "testdbverification-test-db";
+  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
+
   public static final String METADATA_INSTANCE = INSTANCE_ID;
   public static final String METADATA_DATABASE = "change-stream-metadata";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 20;
+  public static final int NUM_WORKERS = 1;
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2", "shuffle_mode=appliance"
   );
@@ -73,8 +85,8 @@ public class PipelineMain {
         .withInstanceId(INSTANCE_ID)
         .withDatabaseId(DATABASE_ID);
     final Timestamp now = Timestamp.now();
-    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds(), now.getNanos());
-    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 1, startTime.getNanos());
+    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
+    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 10, startTime.getNanos());
 
     pipeline
         .apply(SpannerIO
@@ -85,14 +97,7 @@ public class PipelineMain {
             .withMetadataDatabase(METADATA_DATABASE)
             .withInclusiveStartAt(startTime)
             .withInclusiveEndAt(endTime)
-        )
-        .apply(MapElements.into(TypeDescriptors.strings()).via(record -> String.join(",",
-            record.getPartitionToken(),
-            record.getServerTransactionId(),
-            record.getRecordSequence(),
-            record.getCommitTimestamp().toString()
-        )))
-        .apply(PubsubIO.writeStrings().to(TOPIC));
+        );
 
     pipeline.run().waitUntilFinish();
   }

@@ -28,15 +28,16 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
-import java.util.AbstractMap.SimpleEntry;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class MetadataMain {
 
-  private static final String TABLE = "CDC_Partitions_change_stream_metadata_8ccacdb2_c4c9_430d_b752_6a49338f5d82";
+  private static final String TABLE = "<add metadata table name here>";
 
   public static void main(String[] args) throws InterruptedException {
+    final String metadataTable = args[0];
     final SpannerOptions options = SpannerOptions
         .newBuilder()
         .setHost(SPANNER_HOST)
@@ -46,21 +47,32 @@ public class MetadataMain {
     final DatabaseId id = DatabaseId.of(PROJECT_ID, METADATA_INSTANCE, METADATA_DATABASE);
     final DatabaseClient databaseClient = spanner.getDatabaseClient(id);
 
-    while (true) {
-      final Entry<String, Timestamp> min = queryCurrentWatermark(databaseClient, "ASC");
-      final Entry<String, Timestamp> max = queryCurrentWatermark(databaseClient, "DESC");
-      if (min == null || max == null) continue;
-      System.out.println(min.getValue() + ", " + max.getValue());
-      Thread.sleep(5_000L);
+    try (ResultSet resultSet = databaseClient.singleUse().executeQuery(Statement.of("SELECT * FROM " + metadataTable))) {
+      while (resultSet.next()) {
+        System.out.println(resultSet.getCurrentRowAsStruct());
+      }
     }
+
+    // while (true) {
+    //   queryCurrentWatermark(databaseClient, "ASC");
+    //   queryCurrentWatermark(databaseClient, "DESC");
+      // System.out.println();
+      // Thread.sleep(5_000L);
+    // }
   }
 
-  private static Map.Entry<String, Timestamp> queryCurrentWatermark(DatabaseClient databaseClient, String order) {
+  private static Map.Entry<String, Timestamp> queryCurrentWatermark(DatabaseClient databaseClient,
+      String order) {
     try (ResultSet resultSet = databaseClient
         .singleUse()
-        .executeQuery(Statement.of("SELECT * FROM " + TABLE + " ORDER BY CurrentWatermark " + order + " LIMIT 1"))) {
+        .executeQuery(Statement
+            .of("SELECT * FROM " + TABLE + " ORDER BY CurrentWatermark " + order + " LIMIT 1"))) {
       if (resultSet.next()) {
-        return new SimpleEntry<>(resultSet.getString("PartitionToken"), resultSet.getTimestamp("CurrentWatermark"));
+        final Instant currentWatermark = Instant
+            .ofEpochMilli(resultSet.getTimestamp("CurrentWatermark").toSqlTimestamp().getTime());
+        final String state = resultSet.getString("State");
+        final String partitionToken = resultSet.getString("PartitionToken");
+        System.out.println(currentWatermark.atZone(ZoneId.systemDefault()) + ", " + state + ", " + partitionToken);
       }
     }
     return null;
