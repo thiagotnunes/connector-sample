@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package com.google.cdc.connector.sample;
+package com.google.cdc.connector.sample.pubsub;
 
+import static com.google.cdc.connector.sample.configurations.TestConfigurations.PUBSUB_TOPIC;
 import static org.apache.beam.runners.core.construction.resources.PipelineResources.detectClassPathResourcesToStage;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
+import com.google.cdc.connector.sample.configurations.TestConfiguration;
+import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
 import java.io.File;
 import java.util.ArrayList;
@@ -29,45 +32,29 @@ import java.util.Map;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.joda.time.Duration;
 
-public class PipelineMain {
+public class PubsubPipeline {
 
   public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
-  public static final String PROJECT_ID = "cloud-spanner-backups-loadtest";
-
-  // https://pantheon-staging-sso.corp.google.com/dataflow/jobs/us-central1/2021-08-26_18_27_29-17624328362901535969;step=?project=cloud-spanner-backups-loadtest&e=BackendzOverridingLaunch::BackendzOverridingEnabled&mods=-monitoring_api_staging
-  // public static final String INSTANCE_ID = "change-stream-load-test-1";
-  // public static final String DATABASE_ID = "synthetic-load-test-db";
-  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
-
-  // public static final String INSTANCE_ID = "change-stream-load-test-2";
-  // public static final String DATABASE_ID = "testdbload-test-change-stream";
-  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
-
-  public static final String INSTANCE_ID = "change-stream-load-test-3";
-  public static final String DATABASE_ID = "load-test-change-stream-enable";
-  public static final String CHANGE_STREAM_NAME = "changeStreamAll";
-
-  // public static final String INSTANCE_ID = "cdc-hengfeng-test";
-  // public static final String DATABASE_ID = "testdbverification-test-db";
-  // public static final String CHANGE_STREAM_NAME = "changeStreamAll";
-
-  public static final String METADATA_INSTANCE = INSTANCE_ID;
-  public static final String METADATA_DATABASE = "change-stream-metadata";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 1;
+  public static final int NUM_WORKERS = 100;
   public static final List<String> EXPERIMENTS = Arrays.asList(
-      "use_unified_worker", "use_runner_v2", "shuffle_mode=appliance"
+      "use_unified_worker", "use_runner_v2"
   );
-  public static final String TOPIC = "projects/cloud-spanner-backups-loadtest/topics/thiagotnunes-cdc-test";
+  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
 
   public static void main(String[] args) {
     final DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
-    options.setProject(PROJECT_ID);
+    options.setProject(TEST_CONFIGURATION.getProjectId());
     options.setRegion(REGION);
     options.setAutoscalingAlgorithm(NONE);
     options.setRunner(DataflowRunner.class);
@@ -81,23 +68,35 @@ public class PipelineMain {
     final SpannerConfig spannerConfig = SpannerConfig
         .create()
         .withHost(StaticValueProvider.of(SPANNER_HOST))
-        .withProjectId(PROJECT_ID)
-        .withInstanceId(INSTANCE_ID)
-        .withDatabaseId(DATABASE_ID);
+        .withProjectId(TEST_CONFIGURATION.getProjectId())
+        .withInstanceId(TEST_CONFIGURATION.getInstanceId())
+        .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
     final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
-    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 10, startTime.getNanos());
+    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 60, startTime.getNanos());
 
     pipeline
         .apply(SpannerIO
             .readChangeStream()
             .withSpannerConfig(spannerConfig)
-            .withChangeStreamName(CHANGE_STREAM_NAME)
-            .withMetadataInstance(METADATA_INSTANCE)
-            .withMetadataDatabase(METADATA_DATABASE)
+            .withChangeStreamName(TEST_CONFIGURATION.getChangeStreamName())
+            .withMetadataInstance(TEST_CONFIGURATION.getMetadataInstanceId())
+            .withMetadataDatabase(TEST_CONFIGURATION.getMetadataDatabaseId())
             .withInclusiveStartAt(startTime)
             .withInclusiveEndAt(endTime)
-        );
+            .withQueryInterval(Duration.standardSeconds(30))
+        )
+        .apply(Reshuffle.viaRandomKey())
+        .apply(MapElements.into(TypeDescriptors.strings()).via(record -> {
+          Timestamp currentTime = Timestamp.now();
+          return String.join(",", Arrays.asList(
+              record.getPartitionToken(),
+              record.getCommitTimestamp().toString(),
+              currentTime.toString()
+          ));
+        }))
+        .apply(Reshuffle.viaRandomKey())
+        .apply(PubsubIO.writeStrings().to(PUBSUB_TOPIC));
 
     pipeline.run().waitUntilFinish();
   }
