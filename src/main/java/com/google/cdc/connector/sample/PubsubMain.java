@@ -19,11 +19,15 @@ package com.google.cdc.connector.sample;
 
 import static com.google.cdc.connector.sample.PipelineMain.PROJECT_ID;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.pubsub.v1.ProjectSubscriptionName;
 import com.google.pubsub.v1.PubsubMessage;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Charsets;
@@ -35,11 +39,84 @@ public class PubsubMain {
   public static void main(String[] args) {
     final ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(PROJECT_ID, SUBSCRIPTION_ID);
 
-    final MessageReceiver receiver = (PubsubMessage message, AckReplyConsumer consumer) -> {
-      final String messageId = message.getMessageId();
-      final String data = message.getData().toString(Charsets.UTF_8);
-      System.out.println("Received message " + messageId + " with data " + data);
-      consumer.ack();
+    final MessageReceiver receiver = new MessageReceiver() {
+      private long recordCount = 0L;
+      private long recordCommittedToPublished_0ms_to_100ms = 0L;
+      private long recordCommittedToPublished_100ms_to_300ms = 0L;
+      private long recordCommittedToPublished_300ms_to_500ms = 0L;
+      private long recordCommittedToPublished_500ms_to_1000ms = 0L;
+      private long recordCommittedToPublished_1000ms_to_3000ms = 0L;
+      private long recordCommittedToPublished_3000ms_to_inf = 0L;
+      private long recordTotalCommittedToPublished = 0L;
+      private long recordMinCommittedToPublished = Long.MAX_VALUE;
+      private long recordMaxCommittedToPublished = Long.MIN_VALUE;
+
+      @Override
+      public void receiveMessage(PubsubMessage message, AckReplyConsumer consumer) {
+        final String data = message.getData().toString(Charsets.UTF_8);
+        final Timestamp publishTimestamp = Timestamp.fromProto(message.getPublishTime());
+        try {
+          final String[] fields = data.split(",");
+          final String partitionToken = fields[0];
+          final Timestamp commitTimestamp = Timestamp.parseTimestamp(fields[1]);
+          final Timestamp now = Timestamp.now();
+
+          final long committedToPublishedMs = millisBetween(commitTimestamp, publishTimestamp);
+
+          recordCount++;
+          recordTotalCommittedToPublished += committedToPublishedMs;
+          if (committedToPublishedMs < recordMinCommittedToPublished) {
+            recordMinCommittedToPublished = committedToPublishedMs;
+          }
+          if (committedToPublishedMs > recordMaxCommittedToPublished) {
+            recordMaxCommittedToPublished = committedToPublishedMs;
+          }
+          if (committedToPublishedMs < 100) {
+            recordCommittedToPublished_0ms_to_100ms++;
+          } else if (committedToPublishedMs < 300) {
+            recordCommittedToPublished_100ms_to_300ms++;
+          } else if (committedToPublishedMs < 500) {
+            recordCommittedToPublished_300ms_to_500ms++;
+          } else if (committedToPublishedMs < 1000) {
+            recordCommittedToPublished_500ms_to_1000ms++;
+          } else if (committedToPublishedMs < 3000) {
+            recordCommittedToPublished_1000ms_to_3000ms++;
+          } else {
+            recordCommittedToPublished_3000ms_to_inf++;
+          }
+
+          if (recordCount % 25_000L == 0) {
+            final NumberFormat format = NumberFormat.getPercentInstance();
+            format.setMinimumFractionDigits(2);
+            format.setMaximumFractionDigits(2);
+            System.out.println();
+            System.out.println("Stats for " + now);
+            System.out.println("\t" + recordCount + " data records processed");
+            System.out.println("\tCommitted to published");
+            System.out.println("\t\tMin            : " + recordMinCommittedToPublished);
+            System.out.println("\t\tAverage        : " + ((double) recordTotalCommittedToPublished / recordCount));
+            System.out.println("\t\tMax            : " + recordMaxCommittedToPublished);
+            System.out.println("\t\t0ms    -  100ms: " + format.format((double) recordCommittedToPublished_0ms_to_100ms
+                / recordCount) + " (" + recordCommittedToPublished_0ms_to_100ms + ")");
+            System.out.println("\t\t100ms  -  300ms: " + format.format((double) recordCommittedToPublished_100ms_to_300ms
+                / recordCount) + " (" + recordCommittedToPublished_100ms_to_300ms + ")");
+            System.out.println("\t\t300ms  -  500ms: " + format.format((double) recordCommittedToPublished_300ms_to_500ms
+                / recordCount) + " (" + recordCommittedToPublished_300ms_to_500ms + ")");
+            System.out.println("\t\t500ms  - 1000ms: " + format.format((double) recordCommittedToPublished_500ms_to_1000ms
+                / recordCount) + " (" + recordCommittedToPublished_500ms_to_1000ms + ")");
+            System.out.println("\t\t1000ms - 3000ms: " + format.format((double) recordCommittedToPublished_1000ms_to_3000ms
+                / recordCount) + " (" + recordCommittedToPublished_1000ms_to_3000ms + ")");
+            System.out.println("\t\t3000ms -    inf: " + format.format((double) recordCommittedToPublished_3000ms_to_inf
+                / recordCount) + " (" + recordCommittedToPublished_3000ms_to_inf + ")");
+            System.out.println();
+          }
+
+        } catch (Exception e) {
+          System.out.println("Error parsing message " + data);
+        }
+        consumer.ack();
+
+      }
     };
 
     Subscriber subscriber = null;
@@ -47,9 +124,25 @@ public class PubsubMain {
       subscriber = Subscriber.newBuilder(subscriptionName, receiver).build();
       subscriber.startAsync().awaitRunning();
       System.out.println("Listening for messages on " + subscriptionName);
-      subscriber.awaitTerminated(30, TimeUnit.MINUTES);
+      subscriber.awaitTerminated(720, TimeUnit.MINUTES);
     } catch (TimeoutException e) {
       subscriber.stopAsync();
     }
+  }
+
+  private static long millisBetween(Timestamp start, Timestamp end) {
+    final BigDecimal startNanos = BigDecimal
+        .valueOf(start.getSeconds())
+        .scaleByPowerOfTen(9)
+        .add(BigDecimal.valueOf(start.getNanos()));
+    final BigDecimal endNanos = BigDecimal
+        .valueOf(end.getSeconds())
+        .scaleByPowerOfTen(9)
+        .add(BigDecimal.valueOf(end.getNanos()));
+
+    return endNanos
+        .subtract(startNanos)
+        .divide(BigDecimal.valueOf(1_000_000L), RoundingMode.CEILING)
+        .longValue();
   }
 }
