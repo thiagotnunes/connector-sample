@@ -28,16 +28,14 @@ public class PercentileMessageReceiver implements MessageReceiver {
 
   private long recordCount;
   private long recordTotalCommittedToPublished;
-  private long recordTotalCommittedToEmitted;
   private final List<Long> committedToPublishedMillis;
-  private final List<Long> committedToEmittedMillis;
+  private final OutputFile outputFile;
 
-  public PercentileMessageReceiver(int initialCapacity) {
-    recordCount = 0L;
-    recordTotalCommittedToPublished = 0L;
-    recordTotalCommittedToEmitted = 0L;
-    committedToPublishedMillis = new ArrayList<>(initialCapacity);
-    committedToEmittedMillis = new ArrayList<>(initialCapacity);
+  public PercentileMessageReceiver(int initialCapacity, OutputFile outputFile) {
+    this.recordCount = 0L;
+    this.recordTotalCommittedToPublished = 0L;
+    this.committedToPublishedMillis = new ArrayList<>(initialCapacity);
+    this.outputFile = outputFile;
   }
 
   @Override
@@ -50,39 +48,31 @@ public class PercentileMessageReceiver implements MessageReceiver {
       final String[] fields = data.split(",");
       final String partitionToken = fields[0];
       final Timestamp commitTimestamp = Timestamp.parseTimestamp(fields[1]);
-      final Timestamp emittedTimestamp = Timestamp.parseTimestamp(fields[2]);
 
-      final long committedToEmitted = TimestampConverter.millisBetween(commitTimestamp, emittedTimestamp);
       final long committedToPublished = TimestampConverter.millisBetween(commitTimestamp, publishTimestamp);
 
-      recordTotalCommittedToEmitted += committedToEmitted;
       recordTotalCommittedToPublished += committedToPublished;
-      committedToEmittedMillis.add(committedToEmitted);
       committedToPublishedMillis.add(committedToPublished);
+      outputFile.write(committedToPublished);
 
-      if (recordCount % 25_000L == 0) {
+      if (recordCount % 10_000L == 0) {
         System.out.println("Average as of " + now);
-        System.out.println("\tCommitted to emitted: " + (recordTotalCommittedToEmitted / recordCount) + "ms");
         System.out.println("\tCommitted to published: " + (recordTotalCommittedToPublished / recordCount) + "ms");
         System.out.println();
       }
     } catch (Exception e) {
       System.out.println("Error parsing message " + data);
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
     consumer.ack();
   }
 
   public void printPercentiles() {
-    System.out.println("Sorting committed to emitted array");
-    long start = System.currentTimeMillis();
-    committedToEmittedMillis.sort(Long::compare);
-    long end = System.currentTimeMillis();
-    System.out.println("Sorted committed to emitted array in " + (end - start) + "ms");
-
     System.out.println("Sorting committed to published array");
-    start = System.currentTimeMillis();
+    final long start = System.currentTimeMillis();
     committedToPublishedMillis.sort(Long::compare);
-    end = System.currentTimeMillis();
+    final long end = System.currentTimeMillis();
     System.out.println("Sorted committed to published array in " + (end - start) + "ms");
 
     final Timestamp now = Timestamp.now();
@@ -97,13 +87,5 @@ public class PercentileMessageReceiver implements MessageReceiver {
     System.out.println("\t\t99th percentile : " + committedToPublishedMillis.get((int) (0.99 * committedToPublishedMillis.size())));
     System.out.println("\t\tMax             : " + committedToPublishedMillis.get(committedToPublishedMillis.size() - 1));
     System.out.println();
-    System.out.println("\tCommitted to emitted");
-    System.out.println("\t\tMin             : " + committedToEmittedMillis.get(0));
-    System.out.println("\t\tAverage         : " + ((double) recordTotalCommittedToEmitted / recordCount));
-    System.out.println("\t\t50th percentile : " + committedToEmittedMillis.get((int) (0.5 * committedToEmittedMillis.size())));
-    System.out.println("\t\t90th percentile : " + committedToEmittedMillis.get((int) (0.9 * committedToEmittedMillis.size())));
-    System.out.println("\t\t95th percentile : " + committedToEmittedMillis.get((int) (0.95 * committedToEmittedMillis.size())));
-    System.out.println("\t\t99th percentile : " + committedToEmittedMillis.get((int) (0.99 * committedToEmittedMillis.size())));
-    System.out.println("\t\tMax             : " + committedToEmittedMillis.get(committedToEmittedMillis.size() - 1));
   }
 }

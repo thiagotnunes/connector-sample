@@ -22,26 +22,30 @@ import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.TEST_CONFIGU
 
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.pubsub.v1.ProjectSubscriptionName;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class PubsubConsumer {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     final ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(TEST_CONFIGURATION.getProjectId(), PUBSUB_SUBSCRIPTION);
-    final PercentileMessageReceiver percentileReceiver = new PercentileMessageReceiver(10_000_000);
+    final OutputFile outputFile = new OutputFile("one_hour_percentiles.txt", true);
+    final PercentileMessageReceiver percentileReceiver = new PercentileMessageReceiver(100_000_000, outputFile);
 
+    outputFile.open();
     Subscriber subscriber = null;
     try {
       subscriber = Subscriber.newBuilder(subscriptionName, percentileReceiver).build();
       subscriber.startAsync().awaitRunning();
       System.out.println("Listening for messages on " + subscriptionName);
-      subscriber.awaitTerminated(10, TimeUnit.MINUTES);
+      subscriber.awaitTerminated(600, TimeUnit.MINUTES);
+      percentileReceiver.printPercentiles();
     } catch (TimeoutException e) {
       subscriber.stopAsync();
+    } finally {
+      outputFile.close();
     }
-
-    percentileReceiver.printPercentiles();
   }
 
 }

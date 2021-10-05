@@ -38,7 +38,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
 
@@ -60,7 +59,7 @@ public class PubsubPipeline {
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(NUM_WORKERS);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
-    final List<String> filesToStage = filesToStage(options);
+    final List<String> filesToStage = deduplicateFilesToStage(options);
     options.setFilesToStage(filesToStage);
 
     final Pipeline pipeline = Pipeline.create(options);
@@ -73,7 +72,7 @@ public class PubsubPipeline {
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
     final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
-    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 60, startTime.getNanos());
+    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 3600, startTime.getNanos());
 
     pipeline
         .apply(SpannerIO
@@ -84,25 +83,22 @@ public class PubsubPipeline {
             .withMetadataDatabase(TEST_CONFIGURATION.getMetadataDatabaseId())
             .withInclusiveStartAt(startTime)
             .withInclusiveEndAt(endTime)
-            .withQueryInterval(Duration.standardSeconds(30))
+            .withQueryInterval(Duration.standardSeconds(15))
         )
-        .apply(Reshuffle.viaRandomKey())
-        .apply(MapElements.into(TypeDescriptors.strings()).via(record -> {
-          Timestamp currentTime = Timestamp.now();
-          return String.join(",", Arrays.asList(
-              record.getPartitionToken(),
-              record.getCommitTimestamp().toString(),
-              currentTime.toString()
-          ));
-        }))
-        .apply(Reshuffle.viaRandomKey())
+        .apply(MapElements.into(TypeDescriptors.strings()).via(record ->
+            String.join(",", Arrays.asList(
+                record.getPartitionToken(),
+                record.getCommitTimestamp().toString(),
+                Timestamp.now().toString()
+            )))
+        )
         .apply(PubsubIO.writeStrings().to(PUBSUB_TOPIC));
 
     pipeline.run().waitUntilFinish();
   }
 
 
-  private static List<String> filesToStage(DataflowPipelineOptions options) {
+  public static List<String> deduplicateFilesToStage(DataflowPipelineOptions options) {
     final Map<String, String> fileNameToPath = new HashMap<>();
     final List<String> filePaths =
         detectClassPathResourcesToStage(DataflowRunner.class.getClassLoader(), options);
