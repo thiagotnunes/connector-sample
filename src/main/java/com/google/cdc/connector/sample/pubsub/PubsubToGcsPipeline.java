@@ -19,9 +19,9 @@ package com.google.cdc.connector.sample.pubsub;
 import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.EXPERIMENTS;
 import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.REGION;
 import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.TEST_CONFIGURATION;
-import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.deduplicateFilesToStage;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
+import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.DataflowRunner;
@@ -48,7 +48,7 @@ public class PubsubToGcsPipeline {
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(1);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
-    final List<String> filesToStage = deduplicateFilesToStage(options);
+    final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
     options.setFilesToStage(filesToStage);
 
     final Pipeline pipeline = Pipeline.create(options);
@@ -60,17 +60,20 @@ public class PubsubToGcsPipeline {
           public void processElement(ProcessContext context, OutputReceiver<String> outputReceiver) {
             final String[] fields = context.element().split(",");
             final com.google.cloud.Timestamp commitTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[1]);
+            final com.google.cloud.Timestamp emitTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[2]);
             final com.google.cloud.Timestamp publishTime = com.google.cloud.Timestamp.parseTimestamp(context.timestamp().toString());
 
             final long committedToPublished = TimestampConverter.millisBetween(commitTimestamp, publishTime);
+            final long committedToEmitted = TimestampConverter.millisBetween(commitTimestamp, emitTimestamp);
 
-            outputReceiver.output(committedToPublished + "");
+            outputReceiver.output("COE " + committedToEmitted);
+            outputReceiver.output("COP " + committedToPublished);
           }
         }))
         .apply(Window.into(FixedWindows.of(Duration.standardMinutes(10))))
         .apply(TextIO
             .write()
-            .to("gs://thiagotnunes-cdc-loadtest/2021-10-04/committed-to-published-")
+            .to("gs://thiagotnunes-cdc-loadtest/2021-10-07/committed-to-emitted-and-published-")
             .withSuffix(".txt")
             .withWindowedWrites()
             .withNumShards(1)

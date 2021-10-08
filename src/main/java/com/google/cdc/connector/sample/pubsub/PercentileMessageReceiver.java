@@ -28,13 +28,16 @@ public class PercentileMessageReceiver implements MessageReceiver {
 
   private long recordCount;
   private long recordTotalCommittedToPublished;
+  private long recordTotalCommittedToEmitted;
   private final List<Long> committedToPublishedMillis;
+  private final List<Long> committedToEmittedMillis;
   private final OutputFile outputFile;
 
   public PercentileMessageReceiver(int initialCapacity, OutputFile outputFile) {
     this.recordCount = 0L;
     this.recordTotalCommittedToPublished = 0L;
     this.committedToPublishedMillis = new ArrayList<>(initialCapacity);
+    this.committedToEmittedMillis = new ArrayList<>(initialCapacity);
     this.outputFile = outputFile;
   }
 
@@ -48,16 +51,21 @@ public class PercentileMessageReceiver implements MessageReceiver {
       final String[] fields = data.split(",");
       final String partitionToken = fields[0];
       final Timestamp commitTimestamp = Timestamp.parseTimestamp(fields[1]);
+      final Timestamp emittedTimestamp = Timestamp.parseTimestamp(fields[2]);
 
       final long committedToPublished = TimestampConverter.millisBetween(commitTimestamp, publishTimestamp);
+      final long committedToEmitted = TimestampConverter.millisBetween(commitTimestamp, emittedTimestamp);
 
       recordTotalCommittedToPublished += committedToPublished;
+      recordTotalCommittedToEmitted += committedToEmitted;
       committedToPublishedMillis.add(committedToPublished);
+      committedToEmittedMillis.add(committedToEmitted);
       outputFile.write(committedToPublished);
 
       if (recordCount % 10_000L == 0) {
         System.out.println("Average as of " + now);
         System.out.println("\tCommitted to published: " + (recordTotalCommittedToPublished / recordCount) + "ms");
+        System.out.println("\tCommitted to emitted: " + (recordTotalCommittedToEmitted / recordCount) + "ms");
         System.out.println();
       }
     } catch (Exception e) {
@@ -86,6 +94,15 @@ public class PercentileMessageReceiver implements MessageReceiver {
     System.out.println("\t\t95th percentile : " + committedToPublishedMillis.get((int) (0.95 * committedToPublishedMillis.size())));
     System.out.println("\t\t99th percentile : " + committedToPublishedMillis.get((int) (0.99 * committedToPublishedMillis.size())));
     System.out.println("\t\tMax             : " + committedToPublishedMillis.get(committedToPublishedMillis.size() - 1));
+    System.out.println();
+    System.out.println("\tCommitted to emitted");
+    System.out.println("\t\tMin             : " + committedToEmittedMillis.get(0));
+    System.out.println("\t\tAverage         : " + ((double) recordTotalCommittedToEmitted / recordCount));
+    System.out.println("\t\t50th percentile : " + committedToEmittedMillis.get((int) (0.5 * committedToEmittedMillis.size())));
+    System.out.println("\t\t90th percentile : " + committedToEmittedMillis.get((int) (0.9 * committedToEmittedMillis.size())));
+    System.out.println("\t\t95th percentile : " + committedToEmittedMillis.get((int) (0.95 * committedToEmittedMillis.size())));
+    System.out.println("\t\t99th percentile : " + committedToEmittedMillis.get((int) (0.99 * committedToEmittedMillis.size())));
+    System.out.println("\t\tMax             : " + committedToEmittedMillis.get(committedToEmittedMillis.size() - 1));
     System.out.println();
   }
 }

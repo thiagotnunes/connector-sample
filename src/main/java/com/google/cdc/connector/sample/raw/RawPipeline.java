@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.cdc.connector.sample.pubsub;
+package com.google.cdc.connector.sample.raw;
 
 import static com.google.cdc.connector.sample.configurations.TestConfigurations.PUBSUB_TOPIC;
 import static org.apache.beam.runners.core.construction.resources.PipelineResources.detectClassPathResourcesToStage;
@@ -41,11 +41,10 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
-public class PubsubPipeline {
-
+public class RawPipeline {
   public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 30;
+  public static final int NUM_WORKERS = 1;
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
   );
@@ -71,8 +70,6 @@ public class PubsubPipeline {
         .withInstanceId(TEST_CONFIGURATION.getInstanceId())
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
-    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
-    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 3600, startTime.getNanos());
 
     pipeline
         .apply(SpannerIO
@@ -81,8 +78,7 @@ public class PubsubPipeline {
             .withChangeStreamName(TEST_CONFIGURATION.getChangeStreamName())
             .withMetadataInstance(TEST_CONFIGURATION.getMetadataInstanceId())
             .withMetadataDatabase(TEST_CONFIGURATION.getMetadataDatabaseId())
-            .withInclusiveStartAt(startTime)
-            .withInclusiveEndAt(endTime)
+            .withInclusiveStartAt(now)
         )
         .apply(MapElements.into(TypeDescriptors.strings()).via(record ->
             String.join(",", Arrays.asList(
@@ -90,8 +86,7 @@ public class PubsubPipeline {
                 record.getCommitTimestamp().toString(),
                 Timestamp.now().toString()
             )))
-        )
-        .apply(PubsubIO.writeStrings().to(PUBSUB_TOPIC));
+        );
 
     pipeline.run().waitUntilFinish();
   }

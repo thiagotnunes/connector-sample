@@ -26,29 +26,46 @@ import java.util.List;
 public class PercentileReader {
 
   public static void main(String[] args) throws IOException {
-    final List<Long> committedToPublishedMillis = new ArrayList<>(90_000_000);
+    final int initialCapacity = 100_000_000;
+    final List<Long> committedToEmittedMillis = new ArrayList<>(initialCapacity);
+    final List<Long> committedToPublishedMillis = new ArrayList<>(initialCapacity);
     try (BufferedReader reader = new BufferedReader(new FileReader("output/output.txt"))) {
       String line = reader.readLine();
       while (line != null) {
-        committedToPublishedMillis.add(Long.parseLong(line));
+        final String[] fields = line.split(" ");
+        if (fields[0].equals("COE")) {
+          committedToEmittedMillis.add(Long.parseLong(fields[1]));
+        } else if (fields[0].equals("COP")){
+          committedToPublishedMillis.add(Long.parseLong(fields[1]));
+        } else {
+          System.err.println("Unrecognized line " + line);
+        }
         line = reader.readLine();
       }
     }
 
-    System.out.println("Sorting array");
+    System.out.println("Sorting arrays");
     committedToPublishedMillis.sort(Long::compare);
-    System.out.println("Array sorted");
+    committedToEmittedMillis.sort(Long::compare);
+    System.out.println("Arrays sorted");
     final Timestamp now = Timestamp.now();
     System.out.println("Stats for " + now);
     System.out.println("\t" + committedToPublishedMillis.size() + " data records processed");
     System.out.println("\tCommitted to published");
     System.out.println("\t\tMin             : " + committedToPublishedMillis.get(0));
-    // System.out.println("\t\tAverage         : " + ((double) committedToPublishedMillis / recordCount));
     System.out.println("\t\t50th percentile : " + committedToPublishedMillis.get((int) (0.5 * committedToPublishedMillis.size())));
     System.out.println("\t\t90th percentile : " + committedToPublishedMillis.get((int) (0.9 * committedToPublishedMillis.size())));
     System.out.println("\t\t95th percentile : " + committedToPublishedMillis.get((int) (0.95 * committedToPublishedMillis.size())));
     System.out.println("\t\t99th percentile : " + committedToPublishedMillis.get((int) (0.99 * committedToPublishedMillis.size())));
     System.out.println("\t\tMax             : " + committedToPublishedMillis.get(committedToPublishedMillis.size() - 1));
+    System.out.println();
+    System.out.println("\tCommitted to emitted");
+    System.out.println("\t\tMin             : " + committedToEmittedMillis.get(0));
+    System.out.println("\t\t50th percentile : " + committedToEmittedMillis.get((int) (0.5 * committedToEmittedMillis.size())));
+    System.out.println("\t\t90th percentile : " + committedToEmittedMillis.get((int) (0.9 * committedToEmittedMillis.size())));
+    System.out.println("\t\t95th percentile : " + committedToEmittedMillis.get((int) (0.95 * committedToEmittedMillis.size())));
+    System.out.println("\t\t99th percentile : " + committedToEmittedMillis.get((int) (0.99 * committedToEmittedMillis.size())));
+    System.out.println("\t\tMax             : " + committedToEmittedMillis.get(committedToEmittedMillis.size() - 1));
     System.out.println();
   }
 
