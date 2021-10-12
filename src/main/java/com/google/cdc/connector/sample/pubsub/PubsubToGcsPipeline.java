@@ -46,7 +46,7 @@ public class PubsubToGcsPipeline {
     options.setRegion(REGION);
     options.setAutoscalingAlgorithm(NONE);
     options.setRunner(DataflowRunner.class);
-    options.setNumWorkers(1);
+    options.setNumWorkers(30);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
     final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
     options.setFilesToStage(filesToStage);
@@ -70,10 +70,10 @@ public class PubsubToGcsPipeline {
             outputReceiver.output("COP " + committedToPublished);
           }
         }))
-        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(10))))
+        .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
         .apply(TextIO
             .write()
-            .to("gs://thiagotnunes-cdc-loadtest/2021-10-07/committed-to-emitted-and-published-")
+            .to("gs://thiagotnunes-cdc-loadtest/2021-10-09/committed-to-emitted-and-published-")
             .withSuffix(".txt")
             .withWindowedWrites()
             .withNumShards(1)

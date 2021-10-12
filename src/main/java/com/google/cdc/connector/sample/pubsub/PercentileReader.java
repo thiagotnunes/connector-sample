@@ -26,7 +26,7 @@ import java.util.List;
 public class PercentileReader {
 
   public static void main(String[] args) throws IOException {
-    final int initialCapacity = 100_000_000;
+    final int initialCapacity = 200_000_000;
     final List<Long> committedToEmittedMillis = new ArrayList<>(initialCapacity);
     final List<Long> committedToPublishedMillis = new ArrayList<>(initialCapacity);
     try (BufferedReader reader = new BufferedReader(new FileReader("output/output.txt"))) {

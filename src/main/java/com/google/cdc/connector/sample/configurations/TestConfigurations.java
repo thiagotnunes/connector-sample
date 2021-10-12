@@ -54,6 +54,7 @@ public class TestConfigurations {
       "changeStreamAll"
   );
 
-  public static final String PUBSUB_TOPIC = "projects/cloud-spanner-backups-loadtest/topics/thiagotnunes-cdc-test";
+  public static final String PUBSUB_TOPIC_NAME = "thiagotnunes-cdc-test";
+  public static final String PUBSUB_TOPIC = "projects/cloud-spanner-backups-loadtest/topics/" + PUBSUB_TOPIC_NAME;
   public static final String PUBSUB_SUBSCRIPTION = "thiagotnunes-subscription";
 }
