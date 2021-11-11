@@ -16,24 +16,18 @@
 
 package com.google.cdc.connector.sample.raw;
 
-import static com.google.cdc.connector.sample.configurations.TestConfigurations.PUBSUB_TOPIC;
-import static org.apache.beam.runners.core.construction.resources.PipelineResources.detectClassPathResourcesToStage;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
 import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -44,7 +38,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 public class RawPipeline {
   public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 1;
+  public static final int NUM_WORKERS = 10;
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
   );
@@ -70,6 +64,13 @@ public class RawPipeline {
         .withInstanceId(TEST_CONFIGURATION.getInstanceId())
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
+    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(
+        now.getSeconds() + 300,
+        now.getNanos());
+    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(
+        startTime.getSeconds() + 600,
+        startTime.getNanos()
+    );
 
     pipeline
         .apply(SpannerIO
@@ -78,7 +79,8 @@ public class RawPipeline {
             .withChangeStreamName(TEST_CONFIGURATION.getChangeStreamName())
             .withMetadataInstance(TEST_CONFIGURATION.getMetadataInstanceId())
             .withMetadataDatabase(TEST_CONFIGURATION.getMetadataDatabaseId())
-            .withInclusiveStartAt(now)
+            .withInclusiveStartAt(startTime)
+            .withInclusiveEndAt(endTime)
         )
         .apply(MapElements.into(TypeDescriptors.strings()).via(record ->
             String.join(",", Arrays.asList(

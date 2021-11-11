@@ -21,51 +21,59 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PercentileReader {
 
   public static void main(String[] args) throws IOException {
-    final int initialCapacity = 200_000_000;
-    final List<Long> committedToEmittedMillis = new ArrayList<>(initialCapacity);
-    final List<Long> committedToPublishedMillis = new ArrayList<>(initialCapacity);
+    final int initialCapacity = 40_000_000;
+    final Map<String, List<Long>> keyToValues = new HashMap<>();
+    keyToValues.put("CTR", new ArrayList<>(initialCapacity));
+    keyToValues.put("RTE", new ArrayList<>(initialCapacity));
+    keyToValues.put("CTE", new ArrayList<>(initialCapacity));
+    keyToValues.put("CTP", new ArrayList<>(initialCapacity));
+    keyToValues.put("PCS", new ArrayList<>(initialCapacity));
+    keyToValues.put("PSR", new ArrayList<>(initialCapacity));
+    keyToValues.put("SSTSE", new ArrayList<>(initialCapacity));
+    System.out.println("Processing input");
     try (BufferedReader reader = new BufferedReader(new FileReader("output/output.txt"))) {
       String line = reader.readLine();
       while (line != null) {
         final String[] fields = line.split(" ");
-        if (fields[0].equals("COE")) {
-          committedToEmittedMillis.add(Long.parseLong(fields[1]));
-        } else if (fields[0].equals("COP")){
-          committedToPublishedMillis.add(Long.parseLong(fields[1]));
-        } else {
-          System.err.println("Unrecognized line " + line);
-        }
+        String key = fields[0];
+        key = key.equals("COP") ? "CTP" : key;
+        key = key.equals("COE") ? "CTE" : key;
+        final long value = Long.parseLong(fields[1]);
+        keyToValues.get(key).add(value);
         line = reader.readLine();
       }
     }
+    System.out.println("Done processing input");
+    System.out.println();
 
-    System.out.println("Sorting arrays");
-    committedToPublishedMillis.sort(Long::compare);
-    committedToEmittedMillis.sort(Long::compare);
-    System.out.println("Arrays sorted");
     final Timestamp now = Timestamp.now();
     System.out.println("Stats for " + now);
-    System.out.println("\t" + committedToPublishedMillis.size() + " data records processed");
-    System.out.println("\tCommitted to published");
-    System.out.println("\t\tMin             : " + committedToPublishedMillis.get(0));
-    System.out.println("\t\t50th percentile : " + committedToPublishedMillis.get((int) (0.5 * committedToPublishedMillis.size())));
-    System.out.println("\t\t90th percentile : " + committedToPublishedMillis.get((int) (0.9 * committedToPublishedMillis.size())));
-    System.out.println("\t\t95th percentile : " + committedToPublishedMillis.get((int) (0.95 * committedToPublishedMillis.size())));
-    System.out.println("\t\t99th percentile : " + committedToPublishedMillis.get((int) (0.99 * committedToPublishedMillis.size())));
-    System.out.println("\t\tMax             : " + committedToPublishedMillis.get(committedToPublishedMillis.size() - 1));
-    System.out.println();
-    System.out.println("\tCommitted to emitted");
-    System.out.println("\t\tMin             : " + committedToEmittedMillis.get(0));
-    System.out.println("\t\t50th percentile : " + committedToEmittedMillis.get((int) (0.5 * committedToEmittedMillis.size())));
-    System.out.println("\t\t90th percentile : " + committedToEmittedMillis.get((int) (0.9 * committedToEmittedMillis.size())));
-    System.out.println("\t\t95th percentile : " + committedToEmittedMillis.get((int) (0.95 * committedToEmittedMillis.size())));
-    System.out.println("\t\t99th percentile : " + committedToEmittedMillis.get((int) (0.99 * committedToEmittedMillis.size())));
-    System.out.println("\t\tMax             : " + committedToEmittedMillis.get(committedToEmittedMillis.size() - 1));
+    System.out.println("\t" + keyToValues.get("CTP").size() + " data records processed");
+    sortAndPrintStats(keyToValues.get("CTP"), "Committed to published");
+    sortAndPrintStats(keyToValues.get("CTE"), "Committed to emitted");
+    sortAndPrintStats(keyToValues.get("CTR"), "Committed to read");
+    sortAndPrintStats(keyToValues.get("RTE"), "Read to emitted");
+    sortAndPrintStats(keyToValues.get("SSTSE"), "Stream start to stream end");
+    sortAndPrintStats(keyToValues.get("PCS"), "Partition created to scheduled");
+    sortAndPrintStats(keyToValues.get("PSR"), "Partition scheduled to running");
+  }
+
+  private static void sortAndPrintStats(List<Long> values, String name) {
+    values.sort(Long::compareTo);
+    System.out.println("\t" + name);
+    System.out.println("\t\tMin             : " + values.get(0));
+    System.out.println("\t\t50th percentile : " + values.get((int) (0.5 * values.size())));
+    System.out.println("\t\t90th percentile : " + values.get((int) (0.9 * values.size())));
+    System.out.println("\t\t95th percentile : " + values.get((int) (0.95 * values.size())));
+    System.out.println("\t\t99th percentile : " + values.get((int) (0.99 * values.size())));
+    System.out.println("\t\tMax             : " + values.get(values.size() - 1));
     System.out.println();
   }
 

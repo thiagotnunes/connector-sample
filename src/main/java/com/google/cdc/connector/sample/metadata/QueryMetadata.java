@@ -33,8 +33,8 @@ import java.util.Arrays;
 public class QueryMetadata {
 
   private static final String STAGING_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
-  private static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
-  private static final String METADATA_TABLE = "CDC_Partitions_Metadata_change_stream_metadata_78db8ae8_4826_4f0b_8fe1_2df97833db08";
+  private static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.VERIFICATION;
+  private static final String METADATA_TABLE = "CDC_Partitions_Metadata_change_stream_meta_hengfeng_631d0fb0_e12a_4a80_89ae_c816412fc41e";
 
   public static void main(String[] args) {
     final String project = TEST_CONFIGURATION.getProjectId();

@@ -17,19 +17,15 @@
 package com.google.cdc.connector.sample.pubsub;
 
 import static com.google.cdc.connector.sample.configurations.TestConfigurations.PUBSUB_TOPIC;
-import static org.apache.beam.runners.core.construction.resources.PipelineResources.detectClassPathResourcesToStage;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
 import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -45,11 +41,11 @@ public class PubsubPipeline {
 
   public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 30;
+  public static final int NUM_WORKERS = 10;
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
   );
-  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
+  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_1;
 
   public static void main(String[] args) {
     final DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
@@ -88,10 +84,16 @@ public class PubsubPipeline {
             String.join(",", Arrays.asList(
                 record.getPartitionToken(),
                 record.getCommitTimestamp().toString(),
-                Timestamp.now().toString()
+                Timestamp.now().toString(),
+                record.getMetadata().getPartitionCreatedAt().toString(),
+                record.getMetadata().getPartitionScheduledAt().toString(),
+                record.getMetadata().getPartitionRunningAt().toString(),
+                record.getMetadata().getRecordStreamStartedAt().toString(),
+                record.getMetadata().getRecordStreamEndedAt().toString(),
+                record.getMetadata().getRecordReadAt().toString()
             )))
         )
-        .apply(PubsubIO.writeStrings().to(PUBSUB_TOPIC));
+        .apply(PubsubIO.writeStrings().withMaxBatchBytesSize(1).to(PUBSUB_TOPIC));
 
     pipeline.run().waitUntilFinish();
   }

@@ -43,16 +43,19 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PubsubClientPipeline {
 
-  public static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
-  public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 30;
-  public static final List<String> EXPERIMENTS = Arrays.asList(
+  private static final Logger LOGGER = LoggerFactory.getLogger(PubsubClientPipeline.class);
+  private static final String SPANNER_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
+  private static final String REGION = "us-central1";
+  private static final int NUM_WORKERS = 100;
+  private static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
   );
-  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
+  private static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
 
   public static void main(String[] args) {
     final DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
@@ -75,7 +78,7 @@ public class PubsubClientPipeline {
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
     final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
-    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 600, startTime.getNanos());
+    final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 3600, startTime.getNanos());
     final PublishToPubsubDoFn publishToPubsubDoFn =
         new PublishToPubsubDoFn(TEST_CONFIGURATION.getProjectId(), PUBSUB_TOPIC_NAME);
 
@@ -93,7 +96,13 @@ public class PubsubClientPipeline {
             String.join(",", Arrays.asList(
                 record.getPartitionToken(),
                 record.getCommitTimestamp().toString(),
-                Timestamp.now().toString()
+                Timestamp.now().toString(),
+                record.getMetadata().getPartitionCreatedAt().toString(),
+                record.getMetadata().getPartitionScheduledAt().toString(),
+                record.getMetadata().getPartitionRunningAt().toString(),
+                record.getMetadata().getRecordStreamStartedAt().toString(),
+                record.getMetadata().getRecordStreamEndedAt().toString(),
+                record.getMetadata().getRecordReadAt().toString()
             )))
         )
         .apply(ParDo.of(publishToPubsubDoFn));
@@ -120,9 +129,8 @@ public class PubsubClientPipeline {
             .newBuilder(topicName)
             .setBatchingSettings(BatchingSettings
                 .newBuilder()
-                .setIsEnabled(false)
-                .build()
-            )
+                .setElementCountThreshold(1L)
+                .build())
             .build();
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -155,5 +163,4 @@ public class PubsubClientPipeline {
       }
     }
   }
-
 }

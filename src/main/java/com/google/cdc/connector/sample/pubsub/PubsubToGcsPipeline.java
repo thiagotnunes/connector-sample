@@ -22,6 +22,7 @@ import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.TEST_CONFIGU
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
 import com.google.cdc.connector.sample.DataflowFileDeduplicator;
+import com.google.cloud.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.DataflowRunner;
@@ -61,19 +62,37 @@ public class PubsubToGcsPipeline {
             final String[] fields = context.element().split(",");
             final com.google.cloud.Timestamp commitTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[1]);
             final com.google.cloud.Timestamp emitTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[2]);
-            final com.google.cloud.Timestamp publishTime = com.google.cloud.Timestamp.parseTimestamp(context.timestamp().toString());
+            final com.google.cloud.Timestamp partitionCreatedTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[3]);
+            final com.google.cloud.Timestamp partitionScheduledTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[4]);
+            final com.google.cloud.Timestamp partitionRunningTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[5]);
+            final com.google.cloud.Timestamp recordStreamStartTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[6]);
+            final com.google.cloud.Timestamp recordStreamEndTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[7]);
+            final com.google.cloud.Timestamp readTimestamp = com.google.cloud.Timestamp.parseTimestamp(fields[8]);
+            final com.google.cloud.Timestamp publishTimestamp = com.google.cloud.Timestamp.parseTimestamp(context.timestamp().toString());
 
-            final long committedToPublished = TimestampConverter.millisBetween(commitTimestamp, publishTime);
+            final long committedToRead = TimestampConverter.millisBetween(commitTimestamp, readTimestamp);
+            final long readToEmitted = TimestampConverter.millisBetween(readTimestamp, emitTimestamp);
             final long committedToEmitted = TimestampConverter.millisBetween(commitTimestamp, emitTimestamp);
+            final long committedToPublished = TimestampConverter.millisBetween(commitTimestamp, publishTimestamp);
+            final long streamStartToStreamEnd = TimestampConverter.millisBetween(recordStreamStartTimestamp, recordStreamEndTimestamp);
 
-            outputReceiver.output("COE " + committedToEmitted);
-            outputReceiver.output("COP " + committedToPublished);
+            final long partitionCreatedToScheduled = TimestampConverter.millisBetween(partitionCreatedTimestamp, partitionScheduledTimestamp);
+            final long partitionScheduledToRunning = TimestampConverter.millisBetween(partitionScheduledTimestamp, partitionRunningTimestamp);
+
+            outputReceiver.output("CTR " + committedToRead);
+            outputReceiver.output("RTE " + readToEmitted);
+            outputReceiver.output("CTE " + committedToEmitted);
+            outputReceiver.output("CTP " + committedToPublished);
+            outputReceiver.output("SSTSE " + streamStartToStreamEnd);
+
+            outputReceiver.output("PCS " + partitionCreatedToScheduled);
+            outputReceiver.output("PSR " + partitionScheduledToRunning);
           }
         }))
         .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
         .apply(TextIO
             .write()
-            .to("gs://thiagotnunes-cdc-loadtest/2021-10-09/committed-to-emitted-and-published-")
+            .to("gs://thiagotnunes-cdc-loadtest/2021-11-10-pubsub-synth-batch-1-byte-workers-10/trace-")
             .withSuffix(".txt")
             .withWindowedWrites()
             .withNumShards(1)
