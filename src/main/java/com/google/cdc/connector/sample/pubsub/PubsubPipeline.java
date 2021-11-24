@@ -93,7 +93,7 @@ public class PubsubPipeline {
                 record.getMetadata().getRecordReadAt().toString()
             )))
         )
-        .apply(PubsubIO.writeStrings().withMaxBatchBytesSize(1).to(PUBSUB_TOPIC));
+        .apply(PubsubIO.writeStrings().to(PUBSUB_TOPIC));
 
     pipeline.run().waitUntilFinish();
   }
