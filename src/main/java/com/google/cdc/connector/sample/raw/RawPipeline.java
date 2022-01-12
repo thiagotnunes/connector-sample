@@ -65,7 +65,7 @@ public class RawPipeline {
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
     final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(
-        now.getSeconds() + 300,
+        now.getSeconds(),
         now.getNanos());
     final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(
         startTime.getSeconds() + 600,

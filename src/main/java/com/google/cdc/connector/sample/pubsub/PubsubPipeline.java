@@ -45,7 +45,7 @@ public class PubsubPipeline {
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
   );
-  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_1;
+  public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
 
   public static void main(String[] args) {
     final DataflowPipelineOptions options = PipelineOptionsFactory.as(DataflowPipelineOptions.class);
@@ -57,6 +57,7 @@ public class PubsubPipeline {
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
     final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
     options.setFilesToStage(filesToStage);
+    options.setEnableStreamingEngine(true);
 
     final Pipeline pipeline = Pipeline.create(options);
 
