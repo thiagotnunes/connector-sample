@@ -28,7 +28,7 @@ import java.util.Map;
 public class PercentileReader {
 
   public static void main(String[] args) throws IOException {
-    final int initialCapacity = 40_000_000;
+    final int initialCapacity = 70_000_000;
     final Map<String, List<Long>> keyToValues = new HashMap<>();
     keyToValues.put("CTR", new ArrayList<>(initialCapacity));
     keyToValues.put("RTE", new ArrayList<>(initialCapacity));

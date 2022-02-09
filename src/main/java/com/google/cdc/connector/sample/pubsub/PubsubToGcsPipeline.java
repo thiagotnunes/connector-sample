@@ -21,10 +21,7 @@ import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.REGION;
 import static com.google.cdc.connector.sample.pubsub.PubsubPipeline.TEST_CONFIGURATION;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
-import com.google.cdc.connector.sample.DataflowFileDeduplicator;
-import com.google.cloud.Timestamp;
 import java.util.ArrayList;
-import java.util.List;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -49,8 +46,6 @@ public class PubsubToGcsPipeline {
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(30);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
-    final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
-    options.setFilesToStage(filesToStage);
 
     final Pipeline pipeline = Pipeline.create(options);
 
@@ -92,7 +87,7 @@ public class PubsubToGcsPipeline {
         .apply(Window.into(FixedWindows.of(Duration.standardMinutes(1))))
         .apply(TextIO
             .write()
-            .to("gs://thiagotnunes-cdc-loadtest/2021-11-10-pubsub-synth-batch-1-byte-workers-10/trace-")
+            .to("gs://thiagotnunes-cdc-loadtest/2022-01-19-custom-pubsub-pitr-workers-10-2/trace-")
             .withSuffix(".txt")
             .withWindowedWrites()
             .withNumShards(1)

@@ -19,7 +19,6 @@ package com.google.cdc.connector.sample.pubsub;
 import static com.google.cdc.connector.sample.configurations.TestConfigurations.PUBSUB_TOPIC;
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
-import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
@@ -44,6 +43,7 @@ public class PubsubPipeline {
   public static final int NUM_WORKERS = 10;
   public static final List<String> EXPERIMENTS = Arrays.asList(
       "use_unified_worker", "use_runner_v2"
+      //, "enable_custom_pubsub_sink"
   );
   public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
 
@@ -55,8 +55,6 @@ public class PubsubPipeline {
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(NUM_WORKERS);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
-    final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
-    options.setFilesToStage(filesToStage);
     options.setEnableStreamingEngine(true);
 
     final Pipeline pipeline = Pipeline.create(options);
@@ -68,7 +66,7 @@ public class PubsubPipeline {
         .withInstanceId(TEST_CONFIGURATION.getInstanceId())
         .withDatabaseId(TEST_CONFIGURATION.getDatabaseId());
     final Timestamp now = Timestamp.now();
-    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds() + 300, now.getNanos());
+    final Timestamp startTime = Timestamp.ofTimeSecondsAndNanos(now.getSeconds(), now.getNanos());
     final Timestamp endTime = Timestamp.ofTimeSecondsAndNanos(startTime.getSeconds() + 3600, startTime.getNanos());
 
     pipeline

@@ -16,6 +16,8 @@
 
 package com.google.cdc.connector.sample.metadata;
 
+import static org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.PartitionMetadataAdminDao.COLUMN_START_TIMESTAMP;
+
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
@@ -28,13 +30,14 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.TimestampBound;
 import java.util.Arrays;
 
 public class QueryMetadata {
 
   private static final String STAGING_HOST = "https://staging-wrenchworks.sandbox.googleapis.com";
-  private static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.VERIFICATION;
-  private static final String METADATA_TABLE = "CDC_Partitions_Metadata_change_stream_meta_hengfeng_631d0fb0_e12a_4a80_89ae_c816412fc41e";
+  private static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
+  private static final String METADATA_TABLE = "CDC_Partitions_Metadata_change_stream_metadata_36e5b3ff_44b4_4a25_bbde_e7415bc83687";
 
   public static void main(String[] args) {
     final String project = TEST_CONFIGURATION.getProjectId();
@@ -49,8 +52,15 @@ public class QueryMetadata {
     final DatabaseId id = DatabaseId.of(project, instance, database);
     final DatabaseClient databaseClient = spanner.getDatabaseClient(id);
 
-    try (ResultSet resultSet = databaseClient.singleUse().executeQuery(Statement.of(
-        "SELECT * FROM " + METADATA_TABLE + " WHERE State != 'FINISHED' ORDER BY Watermark ASC LIMIT 10"
+    try (ResultSet resultSet = databaseClient.singleUseReadOnlyTransaction(TimestampBound.ofReadTimestamp(Timestamp.parseTimestamp("2022-01-12T04:58:14.487389000Z"))).executeQuery(Statement.of(
+        // "SELECT * FROM " + METADATA_TABLE + " WHERE State != 'FINISHED' ORDER BY Watermark ASC LIMIT 10"
+        // "SELECT * FROM " + METADATA_TABLE + " WHERE PartitionToken = 'AV1oK4XbMkfby9qVG5o5tXts_9GVwZBo4Q9fxCKJpR-2kSMT12-X5MrLITgnCInXbnj5uw9FGeibVESZ8Fslcujfbgvpf8-iDSio6CR30UMcLLgivfm4YjW7ky4GMjHRAJaWo-imE-WLUPfrkzgblTAT11w4gQJLPb55'"
+        "SELECT * FROM "
+            + METADATA_TABLE
+            + " WHERE State = 'CREATED'"
+            + " ORDER BY "
+            + COLUMN_START_TIMESTAMP
+            + " ASC"
     ))) {
       while (resultSet.next()) {
         final String partitionToken = resultSet.getString("PartitionToken");

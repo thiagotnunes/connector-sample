@@ -31,7 +31,7 @@ public class PubsubConsumer {
   public static void main(String[] args) throws IOException {
     final ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(TEST_CONFIGURATION.getProjectId(), PUBSUB_SUBSCRIPTION);
     final OutputFile outputFile = new OutputFile("one_hour_percentiles.txt", true);
-    final PercentileMessageReceiver percentileReceiver = new PercentileMessageReceiver(10_000_000, outputFile);
+    final PercentileMessageReceiver percentileReceiver = new PercentileMessageReceiver(60_000_000, outputFile);
 
     outputFile.open();
     Subscriber subscriber = null;
@@ -39,7 +39,7 @@ public class PubsubConsumer {
       subscriber = Subscriber.newBuilder(subscriptionName, percentileReceiver).build();
       subscriber.startAsync().awaitRunning();
       System.out.println("Listening for messages on " + subscriptionName);
-      subscriber.awaitTerminated(10, TimeUnit.MINUTES);
+      subscriber.awaitTerminated(300, TimeUnit.MINUTES);
       percentileReceiver.printPercentiles();
     } catch (TimeoutException e) {
       subscriber.stopAsync();
