@@ -18,7 +18,6 @@ package com.google.cdc.connector.sample.verification;
 
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
-import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
@@ -59,8 +58,6 @@ public class VerificationPipeline {
     options.setNumWorkers(NUM_WORKERS);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
     options.setStreaming(true);
-    final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
-    options.setFilesToStage(filesToStage);
     final Pipeline pipeline = Pipeline.create(options);
 
     final Timestamp startTime = Timestamp.now();

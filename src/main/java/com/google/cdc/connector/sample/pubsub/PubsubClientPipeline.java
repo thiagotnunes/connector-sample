@@ -20,7 +20,6 @@ import static com.google.cdc.connector.sample.configurations.TestConfigurations.
 import static org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE;
 
 import com.google.api.gax.batching.BatchingSettings;
-import com.google.cdc.connector.sample.DataflowFileDeduplicator;
 import com.google.cdc.connector.sample.configurations.TestConfiguration;
 import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
@@ -65,8 +64,6 @@ public class PubsubClientPipeline {
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(NUM_WORKERS);
     options.setExperiments(new ArrayList<>(EXPERIMENTS));
-    final List<String> filesToStage = DataflowFileDeduplicator.deduplicateFilesToStage(options);
-    options.setFilesToStage(filesToStage);
 
     final Pipeline pipeline = Pipeline.create(options);
 
