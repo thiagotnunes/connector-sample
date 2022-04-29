@@ -23,9 +23,11 @@ import com.google.cdc.connector.sample.configurations.TestConfigurations;
 import com.google.cloud.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
@@ -41,9 +43,12 @@ public class VerificationPipeline {
 
   public static final String SPANNER_HOST = "https://wrenchworks-loadtest.googleapis.com";
   public static final String REGION = "us-central1";
-  public static final int NUM_WORKERS = 10;
-  public static final List<String> EXPERIMENTS = Arrays.asList(
-      "use_unified_worker", "use_runner_v2"
+  public static final int NUM_WORKERS = 5;
+  // public static final List<String> EXPERIMENTS = Arrays.asList(
+  //     "use_unified_worker", "use_runner_v2"
+  // );
+  public static final List<String> DATAFLOW_SERVICE_OPTIONS = Collections.singletonList(
+      "use_runner_v2"
   );
   public static final TestConfiguration TEST_CONFIGURATION = TestConfigurations.LOAD_TEST_3;
   public static final String GCS_PATH_PREFIX = "gs://thiagotnunes-cdc-loadtest/change-stream-records/connector";
@@ -56,8 +61,10 @@ public class VerificationPipeline {
     options.setAutoscalingAlgorithm(NONE);
     options.setRunner(DataflowRunner.class);
     options.setNumWorkers(NUM_WORKERS);
-    options.setExperiments(new ArrayList<>(EXPERIMENTS));
+    // options.setExperiments(new ArrayList<>(EXPERIMENTS));
+    options.setDataflowServiceOptions(DATAFLOW_SERVICE_OPTIONS);
     options.setStreaming(true);
+    options.setAutoscalingAlgorithm(AutoscalingAlgorithmType.NONE);
     final Pipeline pipeline = Pipeline.create(options);
 
     final Timestamp startTime = Timestamp.now();
