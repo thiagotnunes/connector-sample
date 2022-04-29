@@ -11,27 +11,26 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <beam.version>2.35.0</beam.version>
-    <connector.version>2.38.0-SNAPSHOT</connector.version>
+    <beam.version>2.38.0</beam.version>
+    <connector.version>2.39.0-SNAPSHOT</connector.version>
     <joda.version>2.10.5</joda.version>
     <slf4j.version>1.7.25</slf4j.version>
 
     <commons.version>1.15</commons.version>
   </properties>
 
-  <profiles>
-    <profile>
-      <id>dataflow</id>
-      <dependencies>
-      </dependencies>
-    </profile>
-  </profiles>
+  <repositories>
+    <repository>
+      <id>apache.beam.newrelease</id>
+      <url>https://repository.apache.org/content/repositories/orgapachebeam-1256/</url>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-      <version>${beam.version}</version>
+      <version>${connector.version}</version>
     </dependency>
 
     <dependency>
