@@ -11,38 +11,38 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <beam.version>2.38.0</beam.version>
-    <connector.version>2.39.0-SNAPSHOT</connector.version>
+    <beam.runner.version>2.38.0</beam.runner.version>
+    <beam.core.version>2.37.0</beam.core.version>
+    <beam.connector.version>2.38.0</beam.connector.version>
     <joda.version>2.10.5</joda.version>
     <slf4j.version>1.7.25</slf4j.version>
 
     <commons.version>1.15</commons.version>
   </properties>
 
-  <repositories>
-    <repository>
-      <id>apache.beam.newrelease</id>
-      <url>https://repository.apache.org/content/repositories/orgapachebeam-1256/</url>
-    </repository>
-  </repositories>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-      <version>${connector.version}</version>
+      <version>${beam.runner.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-core</artifactId>
-      <version>${beam.version}</version>
+      <version>${beam.core.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-      <version>${connector.version}</version>
+      <version>${beam.connector.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
+      <version>2.38.0</version>
+      <scope>runtime</scope>
     </dependency>
 
     <dependency>

@@ -54,6 +54,15 @@ public class TestConfigurations {
       "changeStreamAll"
   );
 
+  public static TestConfiguration SPAN_CLOUD = new TestConfiguration(
+      "span-cloud-testing",
+      "change-stream-test",
+      "test-db",
+      "change-stream-test",
+      "metadatadb",
+      "changeStreamAll"
+  );
+
   public static final String PUBSUB_TOPIC_NAME = "thiagotnunes-cdc-test";
   public static final String PUBSUB_TOPIC = "projects/cloud-spanner-backups-loadtest/topics/" + PUBSUB_TOPIC_NAME;
   public static final String PUBSUB_SUBSCRIPTION = "thiagotnunes-subscription";
